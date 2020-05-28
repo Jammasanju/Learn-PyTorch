@@ -11,7 +11,7 @@ class Generator(nn.Module):
         self.hidden_size = hidden_size
         self.emb_length = embedding_length
         
-    def forward(self, input, teacher_forcing_ratio):
+    def forward(self, input, teacher_forcing_ratio=0.5):
         encoded_input, origianl_input = self.encoder(input)
         
         batch_size = encoded_input.size(0)
@@ -20,13 +20,20 @@ class Generator(nn.Module):
         for batch_index, batch in enumerate(encoded_input):
             decoded = torch.zeros(self.max_words, self.emb_length)
             
-            for hidden_index, hidden_embedding in enumerate(batch):
+            input = batch[0]
+            
+            for t in range(1, batch_size):
+                
+                hidden_embedding = batch[t]
                 decoder_out = self.decoder(hidden_embedding.view(1,1,self.hidden_size))
+                
+                decoded[t] = decoder_out.view(self.emb_length)
                 teacher_force = random.random() < teacher_forcing_ratio
+                
                 if(teacher_force):
-                    decoded[hidden_index] = origianl_input[batch_index][hidden_index]
+                    input = origianl_input[batch_index][t]
                 else:
-                    decoded[hidden_index] = decoder_out.view(self.emb_length)
+                    input = decoder_out
                 
             outputs[batch_index] = decoded
         return outputs
